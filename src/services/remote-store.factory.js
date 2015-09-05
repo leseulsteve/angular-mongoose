@@ -7,8 +7,11 @@ angular.module('angular-mongoose').factory('RemoteStore',
       this.apiUrl = apiUrl;
     }
 
-    RemoteStore.prototype.find = function () {
-      return $http.get(this.apiUrl).then(function (response) {
+    RemoteStore.prototype.find = function (query) {
+      var headers = {
+        params: query ? query : undefined
+      };
+      return $http.get(this.apiUrl, headers).then(function (response) {
         return response.data;
       });
     };

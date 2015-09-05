@@ -8,32 +8,54 @@ angular.module('angular-mongoose').factory('Hooks',
   ['$q', function ($q) {
 
     function Hooks() {
-      this.hooks = [];
-    }
 
-    Hooks.prototype.register = function (action, fn) {
-      if (typeof fn === 'function') {
-        this.hooks[action] = fn;
-      } else {
-        throw new Error('No a function');
-      }
-    };
-
-    Hooks.prototype.process = function (action, object) {
-      var deffered = $q.defer(),
-        fn = this.hooks[action];
-
-      var resolve = function () {
-        deffered.resolve(object);
+      this.hooks = {
+        pre: {},
+        post: {}
       };
 
-      if (fn) {
-        fn.apply(object, [resolve]);
-      } else {
-        resolve();
-      }
-      return deffered.promise;
+      this.allowedOperations = {
+        pre: ['caching', 'create', 'save', 'remove'],
+        post: ['find', 'create', 'save', 'remove']
+      };
 
+      var that = this;
+
+      _.forEach(this.allowedOperations.pre, function (operationName) {
+        that.hooks.pre[operationName] = [];
+      });
+
+      _.forEach(this.allowedOperations.post, function (operationName) {
+        that.hooks.post[operationName] = [];
+      });
+    }
+
+    Hooks.prototype.register = function (moment, operationName, callback) {
+      if (_.isUndefined(this.hooks[moment][operationName])) {
+        throw new Error('Operation "' + operationName + '" n\'est pas prise en charge par la fonction "' + moment + '"');
+      }
+      this.hooks[moment][operationName].push(callback);
+    };
+
+    Hooks.prototype.process = function (moment, operationName, object) {
+      var promises = [];
+
+      _.forEach(this.hooks[moment][operationName], function (operation) {
+
+        var deffered = $q.defer();
+
+        promises.push(deffered.promise);
+
+        var resolve = function () {
+          deffered.resolve(object);
+        };
+
+        operation.apply(object, [resolve]);
+      });
+
+      return $q.all(promises).then(function () {
+        return object;
+      });
     };
 
     return Hooks;
@@ -48,8 +70,11 @@ angular.module('angular-mongoose').factory('RemoteStore',
       this.apiUrl = apiUrl;
     }
 
-    RemoteStore.prototype.find = function () {
-      return $http.get(this.apiUrl).then(function (response) {
+    RemoteStore.prototype.find = function (query) {
+      var headers = {
+        params: query ? query : undefined
+      };
+      return $http.get(this.apiUrl, headers).then(function (response) {
         return response.data;
       });
     };
@@ -98,57 +123,69 @@ angular.module('angular-mongoose').factory('Schema',
 
       Ressource.create = function (ressourceDef) {
         var ressource = new Ressource(ressourceDef);
-        return hooks.process('pre-create', ressource).then(function (ressource) {
+        return hooks.process('pre', 'create', ressource).then(function (ressource) {
           return remoteStore.create(ressource).then(function (response) {
-            return hooks.process('post-create', new Ressource(response.data));
+            return hooks.process('post', 'find', new Ressource(response)).then(function (ressource) {
+              return hooks.process('post', 'create', ressource);
+            });
           });
         });
       };
 
-      Ressource.find = function () {
-        return remoteStore.find().then(function (rawRessources) {
-          var ressources = [];
+      Ressource.find = function (query) {
+        return remoteStore.find(query).then(function (rawRessources) {
+          var ressources = [],
+            promises = [];
           _.forEach(rawRessources, function (rawRessource) {
-            ressources.push(new Ressource(rawRessource));
+            promises.push(hooks.process('post', 'find', new Ressource(rawRessource)).then(function (ressource) {
+              ressources.push(ressource);
+            }));
+
           });
-          return ressources;
+          return $q.all(promises).then(function () {
+            return ressources;
+          });
         });
       };
 
       Ressource.findById = function (id) {
-        return remoteStore.findById(id).then(function (ressource) {
-          return new Ressource(ressource);
+        return remoteStore.findOne(id).then(function (ressource) {
+          return hooks.process('post', 'find', new Ressource(ressource));
         });
       };
 
       Ressource.pre = function (action, fn) {
-        hooks.register('pre-' + action, fn);
+        hooks.register('pre', action, fn);
       };
 
       Ressource.post = function (action, fn) {
-        hooks.register('post-' + action, fn);
+        hooks.register('post', action, fn);
       };
 
       Ressource.prototype.save = function () {
-        return hooks.process('pre-update', this).then(function (ressource) {
-          return remoteStore.update(ressource).then(function (ressource) {
-            new Ressource(ressource);
-          }).catch(function (reason) {
-            if (reason.code === 401) {
-              return hooks.process('pre-create', ressource).then(function (ressource) {
-                return remoteStore.create(ressource).then(function (response) {
-                  return hooks.process('post-create', new Ressource(response.data));
-                });
+        if (_.isUndefined(this._id)) {
+          return hooks.process('pre', 'create', this).then(function (ressource) {
+            return remoteStore.create(ressource).then(function (response) {
+              return hooks.process('post', 'find', new Ressource(response)).then(function (ressource) {
+                return hooks.process('post', 'create', ressource);
               });
-            }
+            });
           });
-        });
+        } else {
+          return hooks.process('pre', 'save', this).then(function (ressource) {
+            return remoteStore.update(ressource).then(function (ressource) {
+              return hooks.process('post', 'save', new Ressource(ressource)).then(function (ressource) {
+                return hooks.process('post', 'find', ressource);
+              });
+            });
+          });
+        }
       };
 
       Ressource.prototype.remove = function () {
-        return hooks.process('pre-delete', this).then(function (ressource) {
-          return remoteStore.remove(ressource).then(function (ressource) {
-            return hooks.process('post-delete', ressource);
+        return hooks.process('pre', 'remove', this).then(function (ressource) {
+          return remoteStore.destroy(ressource).then(function () {
+            return hooks.process('post', 'remove', ressource);
           });
         });
       };

@@ -17,57 +17,69 @@ angular.module('angular-mongoose').factory('Schema',
 
       Ressource.create = function (ressourceDef) {
         var ressource = new Ressource(ressourceDef);
-        return hooks.process('pre-create', ressource).then(function (ressource) {
+        return hooks.process('pre', 'create', ressource).then(function (ressource) {
           return remoteStore.create(ressource).then(function (response) {
-            return hooks.process('post-create', new Ressource(response.data));
+            return hooks.process('post', 'find', new Ressource(response)).then(function (ressource) {
+              return hooks.process('post', 'create', ressource);
+            });
           });
         });
       };
 
-      Ressource.find = function () {
-        return remoteStore.find().then(function (rawRessources) {
-          var ressources = [];
+      Ressource.find = function (query) {
+        return remoteStore.find(query).then(function (rawRessources) {
+          var ressources = [],
+            promises = [];
           _.forEach(rawRessources, function (rawRessource) {
-            ressources.push(new Ressource(rawRessource));
+            promises.push(hooks.process('post', 'find', new Ressource(rawRessource)).then(function (ressource) {
+              ressources.push(ressource);
+            }));
+
           });
-          return ressources;
+          return $q.all(promises).then(function () {
+            return ressources;
+          });
         });
       };
 
       Ressource.findById = function (id) {
-        return remoteStore.findById(id).then(function (ressource) {
-          return new Ressource(ressource);
+        return remoteStore.findOne(id).then(function (ressource) {
+          return hooks.process('post', 'find', new Ressource(ressource));
         });
       };
 
       Ressource.pre = function (action, fn) {
-        hooks.register('pre-' + action, fn);
+        hooks.register('pre', action, fn);
       };
 
       Ressource.post = function (action, fn) {
-        hooks.register('post-' + action, fn);
+        hooks.register('post', action, fn);
       };
 
       Ressource.prototype.save = function () {
-        return hooks.process('pre-update', this).then(function (ressource) {
-          return remoteStore.update(ressource).then(function (ressource) {
-            new Ressource(ressource);
-          }).catch(function (reason) {
-            if (reason.code === 401) {
-              return hooks.process('pre-create', ressource).then(function (ressource) {
-                return remoteStore.create(ressource).then(function (response) {
-                  return hooks.process('post-create', new Ressource(response.data));
-                });
+        if (_.isUndefined(this._id)) {
+          return hooks.process('pre', 'create', this).then(function (ressource) {
+            return remoteStore.create(ressource).then(function (response) {
+              return hooks.process('post', 'find', new Ressource(response)).then(function (ressource) {
+                return hooks.process('post', 'create', ressource);
               });
-            }
+            });
           });
-        });
+        } else {
+          return hooks.process('pre', 'save', this).then(function (ressource) {
+            return remoteStore.update(ressource).then(function (ressource) {
+              return hooks.process('post', 'save', new Ressource(ressource)).then(function (ressource) {
+                return hooks.process('post', 'find', ressource);
+              });
+            });
+          });
+        }
       };
 
       Ressource.prototype.remove = function () {
-        return hooks.process('pre-delete', this).then(function (ressource) {
-          return remoteStore.remove(ressource).then(function (ressource) {
-            return hooks.process('post-delete', ressource);
+        return hooks.process('pre', 'remove', this).then(function (ressource) {
+          return remoteStore.destroy(ressource).then(function () {
+            return hooks.process('post', 'remove', ressource);
           });
         });
       };
