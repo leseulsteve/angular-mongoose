@@ -1,6 +1,6 @@
 'use strict';
 
-angular.module('angular-mongoose').factory('Hooks',
+angular.module('leseulsteve.angular-mongoose').factory('Hooks',
   function ($q) {
 
     function Hooks() {

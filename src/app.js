@@ -1,3 +1,3 @@
 'use strict';
 
-angular.module('angular-mongoose', []);
+angular.module('leseulsteve.angular-mongoose', []);

@@ -1,6 +1,6 @@
 'use strict';
 
-angular.module('angular-mongoose').factory('RemoteStore',
+angular.module('leseulsteve.angular-mongoose').factory('RemoteStore',
   function ($http) {
 
     function RemoteStore(apiUrl) {
