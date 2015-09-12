@@ -16,23 +16,12 @@ module.exports = function (grunt) {
       dest: {
         base: 'dist',
         js: '<%= paths.dest.base %>/' + libName + '.js',
-        jsMin: '<%= paths.dest.base %>/' + libName + '.min.js'
+        jsMin: '<%= paths.dest.base %>/' + libName + '.min.js',
+        css: '<%= paths.dest.base %>/' + libName + '.css',
+        cssMin: '<%= paths.dest.base %>/' + libName + '.min.css'
       },
       temp: {
-        base: '.tmp'
-      }
-    },
-
-    jsbeautifier: {
-      options: {
-        config: '.jsbeautifyrc'
-      },
-      all: {
-        src: [
-          'Gruntfile.js',
-          '<%= paths.src.base %>',
-          '<%= paths.src.base %>/**/*.js'
-        ]
+        base: 'temp'
       }
     },
 
@@ -44,7 +33,18 @@ module.exports = function (grunt) {
       all: {
         src: [
           'Gruntfile.js',
-          '<%= paths.src.base %>',
+          '<%= paths.src.base %>/**/*.js'
+        ]
+      }
+    },
+
+    jsbeautifier: {
+      options: {
+        config: '.jsbeautifyrc'
+      },
+      all: {
+        src: [
+          'Gruntfile.js',
           '<%= paths.src.base %>/**/*.js'
         ]
       }
@@ -70,18 +70,19 @@ module.exports = function (grunt) {
     },
 
     concat: {
-      options: {
-        separator: ';\n',
-      },
-      build: {
+      js: {
+        options: {
+          separator: ';\n',
+        },
         src: [
           '<%= paths.temp.base %>' + '/app.js',
-          '<%= paths.temp.base %>' + '/services/*.js',
+          '<%= paths.temp.base %>' + '/config/*.js',
+          '<%= paths.temp.base %>' + '/filters/*.js',
           '<%= paths.temp.base %>' + '/directives/*.js',
-          '<%= paths.temp.base %>' + '/filters/*.js'
+          '<%= paths.temp.base %>' + '/services/*.js'
         ],
         dest: '<%= paths.dest.js %>'
-      },
+      }
     },
 
     uglify: {
@@ -103,7 +104,7 @@ module.exports = function (grunt) {
     'newer:jshint:all',
     'newer:jsbeautifier:all',
     'ngAnnotate:build',
-    'concat:build',
+    'concat:js',
     'uglify:build',
     'clean:buildTemp'
   ]);
