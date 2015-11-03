@@ -140,11 +140,20 @@ angular.module('leseulsteve.angular-mongoose').factory('Schema',
             promises.push(hooks.process('post', 'find', new Ressource(rawRessource)).then(function (ressource) {
               ressources.push(ressource);
             }));
-
           });
           return $q.all(promises).then(function () {
             return ressources;
           });
+        });
+      };
+
+      Ressource.findOne = function (query) {
+        return Ressource.find(query).then(function (results) {
+          if (results.length >  0) {
+            return results[0];
+          } else {
+            return null;
+          }
         });
       };
 
@@ -184,7 +193,7 @@ angular.module('leseulsteve.angular-mongoose').factory('Schema',
 
       Ressource.prototype.remove = function () {
         return hooks.process('pre', 'remove', this).then(function (ressource) {
-          return remoteStore.destroy(ressource).then(function () {
+          return remoteStore.remove(ressource).then(function () {
             return hooks.process('post', 'remove', ressource);
           });
         });

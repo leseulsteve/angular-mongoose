@@ -16,9 +16,7 @@ module.exports = function (grunt) {
       dest: {
         base: 'dist',
         js: '<%= paths.dest.base %>/' + libName + '.js',
-        jsMin: '<%= paths.dest.base %>/' + libName + '.min.js',
-        css: '<%= paths.dest.base %>/' + libName + '.css',
-        cssMin: '<%= paths.dest.base %>/' + libName + '.min.css'
+        jsMin: '<%= paths.dest.base %>/' + libName + '.min.js'
       },
       temp: {
         base: 'temp'
