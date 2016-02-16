@@ -2,17 +2,15 @@
 
 angular.module('leseulsteve.angular-mongoose').factory('RemoteStore',
   function ($http) {
-
-    
-    function RemoteStore(apiUrl) {
+function RemoteStore(apiUrl) {
       this.apiUrl = apiUrl;
     }
 
-    function getCacheId(ressource) {
-      var splittedApiUrl = _.map(this.apiUrl.split('/'), function(urlPart) {
+    function getCacheId(apiUrl, ressource) {
+      var splittedApiUrl = _.map(apiUrl.split('/'), function(urlPart) {
         return _.startsWith(urlPart, ':') ? ressource[urlPart.substring(1)] : urlPart;
       });
-      return splittedApiUrl.join('/') + '/' + ressource[idProp];
+      return splittedApiUrl.join('/') + '/' + ressource._id;
     }
 
     RemoteStore.prototype.find = function(query) {
@@ -41,7 +39,7 @@ angular.module('leseulsteve.angular-mongoose').factory('RemoteStore',
 
     RemoteStore.prototype.create = function(ressourceDef) {
       var splittedApiUrl = _.map(this.apiUrl.split('/'), function(urlPart) {
-        return _.startsWith(urlPart, ':') ? ressource[urlPart.substring(1)] : urlPart;
+        return _.startsWith(urlPart, ':') ? ressourceDef[urlPart.substring(1)] : urlPart;
       });
       return $http.post(splittedApiUrl.join('/'), ressourceDef).then(function(response) {
         return response.data;
@@ -49,14 +47,14 @@ angular.module('leseulsteve.angular-mongoose').factory('RemoteStore',
     };
 
     RemoteStore.prototype.update = function(ressource) {
-      var identifiant = getCacheId(ressource);
+      var identifiant = getCacheId(this.apiUrl, ressource);
       return $http.put(identifiant, ressource).then(function(response) {
         return response.data;
       });
     };
 
     RemoteStore.prototype.remove = function(ressource) {
-      var identifiant = getCacheId(ressource);
+      var identifiant = getCacheId(this.apiUrl, ressource);
       return $http.delete(identifiant);
     };
 
