@@ -57,6 +57,10 @@ angular.module('leseulsteve.angular-mongoose').factory('Schema',
         });
       };
 
+      Ressource.count = function (query) {
+        return remoteStore.count(query);
+      };
+
       Ressource.pre = function (action, fn) {
         hooks.register('pre', action, fn);
       };

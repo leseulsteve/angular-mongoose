@@ -100,6 +100,12 @@ angular.module('leseulsteve.angular-mongoose').factory('RemoteStore',
       });
     };
 
+    RemoteStore.prototype.count = function (query) {
+      return this.find(query).then(function (data) {
+        return data.length;
+      });
+    };
+
     RemoteStore.prototype.create = function (ressourceDef) {
       var splittedApiUrl = _.map(this.apiUrl.split('/'), function (urlPart) {
         return _.startsWith(urlPart, ':') ? ressourceDef[urlPart.substring(1)] : urlPart;
@@ -182,6 +188,10 @@ angular.module('leseulsteve.angular-mongoose').factory('Schema',
         return remoteStore.findById(id).then(function (ressource) {
           return hooks.process('post', 'find', new Ressource(ressource));
         });
+      };
+
+      Ressource.count = function (query) {
+        return remoteStore.count(query);
       };
 
       Ressource.pre = function (action, fn) {
