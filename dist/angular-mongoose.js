@@ -161,16 +161,9 @@ angular.module('leseulsteve.angular-mongoose').factory('Schema',
 
       Ressource.find = function (query) {
         return remoteStore.find(query).then(function (rawRessources) {
-          var ressources = [],
-            promises = [];
-          _.forEach(rawRessources, function (rawRessource) {
-            promises.push(hooks.process('post', 'find', new Ressource(rawRessource)).then(function (ressource) {
-              ressources.push(ressource);
-            }));
-          });
-          return $q.all(promises).then(function () {
-            return ressources;
-          });
+          return $q.all(_.map(rawRessources, function (rawRessource) {
+            return hooks.process('post', 'find', new Ressource(rawRessource));
+          }));
         });
       };
 
