@@ -53,6 +53,9 @@ angular.module('leseulsteve.angular-mongoose').factory('RemoteStore',
     };
 
     RemoteStore.prototype.update = function (ressource) {
+      if (_.isUndefined(ressource._id)) {
+        return this.create(ressource);
+      }
       var identifiant = getCacheId(this.apiUrl, ressource);
       return $http.put(identifiant, ressource).then(function (response) {
         return response.data;
